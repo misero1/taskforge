@@ -1,0 +1,10 @@
+pub mod gpu;
+pub mod health;
+pub mod history;
+pub mod overview;
+pub mod processes;
+pub mod repair;
+pub mod system;
+pub mod theme;
+pub mod tools;
+pub mod widgets;
