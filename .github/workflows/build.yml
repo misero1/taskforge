@@ -1,0 +1,52 @@
+name: Build Windows release
+
+# Builds TaskForge on GitHub's Windows machines with Microsoft's own compiler
+# (MSVC). When you publish a release on GitHub, the finished
+# TaskForge-Setup.exe and its SHA-256 checksum are attached to it
+# automatically.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --release
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          Copy-Item target\release\taskforge.exe TaskForge-Setup.exe
+          $hash = (Get-FileHash TaskForge-Setup.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  TaskForge-Setup.exe" | Out-File -Encoding ascii TaskForge-Setup.exe.sha256
+          Get-Content TaskForge-Setup.exe.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TaskForge-Setup
+          path: |
+            TaskForge-Setup.exe
+            TaskForge-Setup.exe.sha256
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" TaskForge-Setup.exe TaskForge-Setup.exe.sha256 --clobber
